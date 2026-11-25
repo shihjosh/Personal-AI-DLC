@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "ask": [
+      "Edit(**/*.js)",
+      "Edit(**/*.mjs)",
+      "Edit(**/*.cjs)",
+      "Edit(**/*.jsx)",
+      "Edit(**/*.ts)",
+      "Edit(**/*.mts)",
+      "Edit(**/*.cts)",
+      "Edit(**/*.tsx)",
+      "Edit(**/*.json)",
+      "Edit(**/*.py)",
+      "Edit(**/*.sh)",
+      "Edit(**/*.ps1)",
+      "Edit(**/*.sql)",
+      "Edit(**/*.yml)",
+      "Edit(**/*.yaml)",
+      "Edit(**/Dockerfile)"
+    ]
+  }
+}

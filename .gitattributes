@@ -1,0 +1,2 @@
+# Windows checkout 不可把 shell script 轉成 CRLF，否則 Git Bash 執行會失敗
+*.sh text eol=lf
