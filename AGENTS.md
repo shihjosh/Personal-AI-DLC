@@ -27,7 +27,7 @@
 
 - `template/` 是套用到各專案的團隊範本，修改一律走 PR
 - `template/skill/.claude/skills/aidlc-v1/`：v1 Skill。`rule-details/` 內的上游檔案保留原文不修改；Personal Team 客製一律寫在 `SKILL.md` 開頭的本地規則，或新增到 `rule-details/extensions/personal-team/`；任何本地修改都要同步記錄在 `UPSTREAM.md`
-- `template/skill/.claude/settings.json`：程式碼寫入前的權限確認設定，新增副檔名時注意不要包含 `.md`（`aidlc-docs/` 需要自由寫入）
+- `template/skill/.claude/settings.json`：權限關卡。`ask` 只列**高風險路徑**（migration、SQL、IaC、workflow、auth、`.env`），一般程式碼交給品質門檻；`deny` 禁止本機部署與強制推送。不要把 `.md` 加入 `ask`（`aidlc-docs/` 需要自由寫入）
 - `template/agent-team/.claude/`：協作交付團隊（PM + BA／設計師／開發者／審查者／QA subagents），角色規則依賴 v1 Skill；共用協定放 `aidlc-team/protocol.md`，不放進 `agents/`
 - 根目錄的 `.claude/`、`aidlc-docs/` 只會出現在 `trial/*` branch，不要 merge 進 `main`
 - `scripts/apply-template.sh` 只套用協作交付團隊（`agent-team/` + `skill/`）；修改本地規則時，`SKILL.md` 與 `protocol.md` 要一起改

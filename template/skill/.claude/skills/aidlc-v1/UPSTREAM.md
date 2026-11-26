@@ -16,9 +16,10 @@
 3. 結尾加上 `$ARGUMENTS`，讓 `/aidlc-v1 <需求>` 的內容直接帶入
 4. 在主流程前加上「語言規則」：對話與 `aidlc-docs/` 文件一律使用繁體中文；`[Answer]:`、選項字母、核取方塊、檔名、`aidlc-state.md` 欄位與階段名稱、程式碼與識別字保持原樣
 
-5. 在主流程前加上「擴充預設值」：Security、Resiliency、Property-Based Testing 一律預設啟用且不提問，使用者明確要求時才關閉
-6. 新增 `rule-details/extensions/personal-team/team-standards/personal-team-standards.md`（PTEAM-01～07）：沒有 opt-in 檔，依上游擴充機制每次自動載入並強制套用
-7. 範本另附 `template/skill/.claude/settings.json`：以 `permissions.ask` 讓寫入程式碼類檔案前一定要使用者確認（不屬於 Skill 本身，見 template/README.md）
+5. 在主流程前加上「擴充預設值」：Security 預設啟用，Resiliency、Property-Based Testing 預設停用，三者都不提問；使用者明確要求時才改變
+6. 在主流程前加上「核准模式」：自動／標準／強化／嚴格，預設依風險分級決定（低 → 自動、中 → 標準、高 → 強化）；停點集中在規格與介面、資料模型與基礎設施設計、最終交付（品質門檻全過後），覆寫各階段的「Wait for Explicit Approval」
+7. 新增 `rule-details/extensions/personal-team/team-standards/personal-team-standards.md`（PTEAM-01～07）：沒有 opt-in 檔，依上游擴充機制每次自動載入並強制套用
+8. 範本另附 `template/skill/.claude/settings.json`：以 `permissions.ask` 讓寫入程式碼類檔案前一定要使用者確認（不屬於 Skill 本身，見 template/README.md）
 
 ## 限制
 

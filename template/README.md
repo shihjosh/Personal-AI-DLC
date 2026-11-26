@@ -25,14 +25,14 @@ template/
 | --- | --- | --- |
 | PM（主 session） | 與人員對話、核准 gate、派工、回饋迴圈、**檢視進度**、**問題追蹤**（`team-log.md` 的未解問題表）；唯一寫 `aidlc-state.md`、`audit.md`、`team-log.md` | `Agent(ba, designer, developer, reviewer, qa)`、讀寫檔 |
 | BA | Requirements Analysis、User Stories、NFR Requirements | 讀寫檔 |
-| 設計師 | Reverse Engineering、Application Design、Units Generation、Functional／NFR／Infrastructure Design | 讀寫檔 |
-| 開發者 | Code Generation（含自動化測試）、依回饋修正 | 讀寫檔、Bash |
-| 審查者 | 程式碼、安全與品質審查 | **唯讀** |
-| QA | Build and Test、驗收測試與修正驗證 | 讀檔、寫測試文件、Bash |
+| 設計師 | Reverse Engineering、Application Design、Units Generation、Functional／NFR／Infrastructure Design；產出介面規格、資料模型與 migration、AWS 資源變更清單 | 讀寫檔、codebase-memory-mcp 查詢（選用） |
+| 開發者 | Code Generation（測試先行：紅燈 → 綠燈）、依回饋修正、產出 `changes.diff` | 讀寫檔、Bash、codebase-memory-mcp 查詢（選用） |
+| 審查者 | 以 diff 為範圍的程式碼、安全與品質審查 | **唯讀**；codebase-memory-mcp 查詢（選用，例如 `detect_changes`） |
+| QA | Build and Test：執行品質門檻（protocol.md 第 5.4 節）、驗收測試與修正驗證 | 讀檔、寫測試文件、Bash |
 
 回饋迴圈（審查者 → 開發者、QA → 開發者、開發者 → BA／設計師）一律經 PM 轉送，每個迴圈最多 3 輪，紀錄在 `aidlc-docs/team-log.md`。
 
-subagent 不會自動載入 `SKILL.md` 開頭的 Personal Team 本地規則，所以在 `protocol.md` 重申：繁體中文（第 5 節）、擴充預設啟用與 Personal Team 規範一律套用（第 5.1 節）。**修改本地規則時，`SKILL.md` 與 `protocol.md` 要一起改。**
+subagent 不會自動載入 `SKILL.md` 開頭的 Personal Team 本地規則，所以在 `protocol.md` 重申：繁體中文（第 5 節）、擴充預設值（Security 啟用、Resiliency／PBT 停用）與 Personal Team 規範一律套用（第 5.1 節）。**修改本地規則時，`SKILL.md` 與 `protocol.md` 要一起改。**
 
 > [!warning] 限制
 > - 只有「審查者唯讀」與「PM 只能派這 5 個角色」由 `tools` 強制；其餘檔案所有權（例如 BA 只寫 `aidlc-docs/`）與核准 gate 都是 prompt 層級，再以權限關卡補強程式碼寫入
@@ -44,19 +44,47 @@ subagent 不會自動載入 `SKILL.md` 開頭的 Personal Team 本地規則，�
 | 規則 | 效果 |
 | --- | --- |
 | 語言規則 | 對話與 `aidlc-docs/` 文件一律繁體中文；`[Answer]:`、檔名、`aidlc-state.md` 欄位維持原樣 |
-| 擴充預設值 | Security、Resiliency、Property-Based Testing **預設啟用、不提問**；不需要時說「關閉 Resiliency」等；不適用的規則標示 N/A |
+| 擴充預設值 | **Security 預設啟用**；Resiliency、Property-Based Testing 預設停用；三者都不提問，要調整就說「啟用 Resiliency」「關閉 Security」等；不適用的規則標示 N/A |
 | Personal Team 規範（PTEAM-01～07） | 部署只走 CI + OIDC、AWS 資源用 CDK、IAM 最小權限、機密不進 repo、破壞性變更標示與 `cdk diff`、自動化測試、EAC_Wiki 唯讀；違反時該階段不能繼續 |
+
+## 核准模式、風險分級與品質門檻
+
+目標是「人在迴圈外監控」：人力審查集中在前期的規格與設計，實作交給自動品質門檻。
+
+- **停點**（`protocol.md` 第 5.2 節）：ⓐ 規格與介面確認、ⓑ 資料模型與基礎設施設計確認、ⓒ 最終交付（品質門檻全過後）
+- **模式**：自動（只停 ⓒ）／標準（ⓐⓒ）／強化（ⓐⓑⓒ，高風險檔案逐行審查）／嚴格（每階段）
+- **預設依風險**（第 5.3 節）：低 → 自動、中 → 標準、高 → 強化；破壞性介面變更、有狀態資源、資源取代、IAM `*` 會自動升級為高風險
+- **品質門檻**（第 5.4 節）：依專案自動偵測（測試、介面契約、lint／型別檢查、`npm audit`、機密掃描、`cdk synth`／CDK 測試／`cdk-nag`），沒設定的標 N/A；未過自動退回開發者
+- **顆粒度**（第 8 節）：一個 endpoint、一個 migration 或一組相關資源為一個單元，基礎設施與 migration 先、API 後
+- 自動往下的階段記為「自動通過」，不會寫成人員核准
+
+## 證據與測試先行
+
+- **EVIDENCE**（`protocol.md` 第 6 節）：每個角色回報都要附實際執行的指令與結果；開發者要有 TDD 紅燈與綠燈，QA 要有每條驗收標準的驗證結果，缺少時 PM 派回
+- **TDD**（`protocol.md` 第 7.1 節）：先寫失敗的測試，再寫實作；沒有可測邏輯的變更可例外
+- **審查範圍**：開發者把既有檔案的變更存成 `aidlc-docs/construction/<unit>/code/changes.diff`，審查者以此與新增檔案為範圍
+
+## codebase-memory-mcp（選用）
+
+`protocol.md` 第 2.1 節。設計師、開發者、審查者的 `tools` 已列入查詢類工具（`mcp__codebase-memory-mcp__*`）；專案沒有設定這個 MCP 時，這些工具不會出現，角色照常使用 Read／Grep／Glob（已實測不影響 agent 運作）。
 
 ## 權限關卡
 
-`.claude/settings.json` 用 Claude Code 的 `permissions.ask`，讓寫入 `.js`、`.ts`、`.json`、`.py`、`.yml` 等程式碼類檔案前**一定跳出確認**，即使選了「允許本次所有編輯」或 `acceptEdits` 模式也一樣（`bypassPermissions` 模式除外，不要使用）；`aidlc-docs/` 的 `.md` 文件不受影響。
+`.claude/settings.json`：
 
-- 專案已有 `.claude/settings.json` 時 `apply-template.sh` 會 SKIP，請手動把 `permissions.ask` 清單合併進去
-- 跳出提示按「允許」即可；不要為了少按幾次去加 `permissions.allow`（`allow` 蓋不過 `ask`，且 `Write(path)` 規則不會生效，只認 `Edit(path)`）
-- 只涵蓋檔案編輯工具；Bash 指令寫檔（例如 `echo > file`）不在規則內，Bash 指令本身會詢問，執行前請看清楚
-- 新增副檔名時不要加入 `.md`，`aidlc-docs/` 需要自由寫入
+| 規則 | 內容 |
+| --- | --- |
+| `ask`（寫入前一定確認，`acceptEdits` 也一樣） | `**/migrations/**`、`**/migration/**`、`**/*.sql`、`**/infra/**`、`**/cdk/**`、`**/cdk.json`、`**/*-stack.ts`、`**/*Stack.ts`、`**/*.stack.ts`、`**/.github/workflows/**`、`**/auth/**`、`**/.env*` |
+| `deny`（直接拒絕） | `cdk deploy`、`cdk destroy`、`sam deploy`、`aws cloudformation deploy`、`aws cloudformation delete-stack`、`git push --force`／`-f`（含 `npx` 形式） |
+| 一般程式碼 | 不詢問，交給品質門檻與審查者 |
 
-實測（2026-11-25）：`acceptEdits` 模式下一路回覆「核准並繼續」，`aidlc-docs/` 正常寫入，寫 `hello.js` 時被擋下 5 次，模型沒有改用 shell 繞過。
+- 專案已有 `.claude/settings.json` 時 `apply-template.sh` 會 SKIP，請手動合併 `ask` 與 `deny` 清單
+- 專案的 migration 或 IaC 在其他路徑時，在專案的 `settings.json` 補上
+- 不要為了少按幾次去加 `permissions.allow`（`allow` 蓋不過 `ask`；`Write(path)` 不會生效，只認 `Edit(path)`）
+- `deny` 只比對指令文字，不是安全邊界；真正的防線是本機不放可部署的 AWS 憑證。`bypassPermissions` 模式下規則無效
+- 不要把 `.md` 加入 `ask`，`aidlc-docs/` 需要自由寫入
+
+實測（2026-11-26）：`acceptEdits` 模式下 `src/app.js` 直接寫入；`infra/lib/api-stack.ts`、`db/migrations/001.sql` 被擋下要求確認；`cdk deploy --all` 被拒絕。
 
 ## 更新上游版本
 

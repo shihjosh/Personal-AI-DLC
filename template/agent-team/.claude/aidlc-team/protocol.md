@@ -35,6 +35,21 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 
 已啟用的 extensions（見 `aidlc-docs/aidlc-state.md` 的 `## Extension Configuration`）對所有角色都是硬性規則。
 
+## 2.1 程式碼查詢工具（選用：codebase-memory-mcp）
+
+專案有設定 [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) 時，角色可用的工具中會出現 `mcp__codebase-memory-mcp__*`。有這些工具就**優先用查詢取代逐檔讀取**，以減少 token；沒有就照常用 Read／Grep／Glob。
+
+| 工具 | 用途 | 主要使用者 |
+| --- | --- | --- |
+| `index_status`、`check_index_coverage` | 確認專案已建立索引且是最新的；不是最新就改用 Read／Grep，並在 SUMMARY 註明 | 所有角色（使用前先確認） |
+| `get_architecture` | 專案概觀：語言、套件、路由、熱點 | 設計師（逆向工程、應用程式設計） |
+| `search_graph`、`get_file_outline`、`get_code_snippet` | 找符號、看檔案大綱、讀單一函式 | 設計師、開發者、審查者 |
+| `trace_path` | 呼叫者／被呼叫者、資料流 | 設計師、開發者（修改前看影響範圍）、審查者 |
+| `detect_changes` | 把 git diff 對應到受影響的符號與影響範圍（blast radius） | 審查者 |
+
+- 只使用查詢類工具；**不呼叫** `index_repository`、`delete_project`、`manage_adr` 等會改變索引的工具（需要重建索引時由 PM 請使用者決定）
+- 查詢結果只是線索；要判定 blocking 或修改程式碼前，仍要用 Read 確認實際內容
+
 ## 3. 階段負責人
 
 | 階段（v1） | 負責角色 | 規則檔 |
@@ -78,10 +93,71 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 
 ## 5.1 擴充預設值（同 v1 Skill 本地規則，subagent 不會自動載入 Skill，故在此重申）
 
-- Security、Resiliency、Property-Based Testing 擴充**一律預設啟用，不在問題檔中詢問**；只有使用者明確要求關閉（由 PM 轉達）時才停用
-- 已啟用擴充的完整規則檔，各角色在自己負責的階段都要讀取並遵守：`<rules>/extensions/security/baseline/security-baseline.md`、`<rules>/extensions/resiliency/baseline/resiliency-baseline.md`、`<rules>/extensions/testing/property-based/property-based-testing.md`；不適用的規則標示 N/A
+- 預設：**Security 啟用**，Resiliency、Property-Based Testing **停用**；三者都**不在問題檔中詢問**，只有使用者明確要求（由 PM 轉達）時才改變
+- 依 `aidlc-docs/aidlc-state.md` 的 `## Extension Configuration` 判斷哪些擴充已啟用；已啟用擴充的完整規則檔，各角色在自己負責的階段都要讀取並遵守：
+  - Security：`<rules>/extensions/security/baseline/security-baseline.md`
+  - Resiliency（啟用時）：`<rules>/extensions/resiliency/baseline/resiliency-baseline.md`
+  - Property-Based Testing（啟用時）：`<rules>/extensions/testing/property-based/property-based-testing.md`
+- 不適用的規則標示 N/A；停用的擴充不需讀取，也不要在問題檔中提到
 - **Personal Team 規範（PTEAM-01～07）一律啟用**：部署只走 CI + OIDC、AWS 資源用 CDK、IAM 最小權限、機密不進 repo、破壞性與成本變更標示（含 `cdk diff`）、自動化測試、EAC_Wiki 唯讀
 - 違反適用的擴充規則或 PTEAM 規則即為 blocking finding；完成回報時在 SUMMARY 或 ITEMS 附「擴充與 Personal Team 規範檢查」（符合／不符合／N/A）
+
+## 5.2 核准模式（同 v1 Skill 本地規則）
+
+由 PM 執行，其他角色不直接處理核准：
+
+| 模式 | 停下來等人員核准的時機 | 問題檔 |
+| --- | --- | --- |
+| **自動** | 只有 ⓒ 最終交付 | 有建議答案的題目自動採用並標註「依建議代填（自動模式）」，交付時列出這些假設 |
+| **標準** | ⓐ 規格與介面確認、ⓒ 最終交付 | 請人員作答 |
+| **強化** | ⓐ 規格與介面確認、ⓑ 資料模型與基礎設施設計確認、ⓒ 最終交付；審查者對高風險檔案逐行審查 | 請人員作答 |
+| **嚴格** | 每個階段完成後（上游 v1 原本的做法） | 請人員作答 |
+
+- ⓐ **規格與介面確認**：需求分析完成時。內容包含需求、驗收標準，以及**介面**（API 的路由、HTTP method、request／response schema、錯誤碼、認證方式；或其他對外介面）
+- ⓑ **資料模型與基礎設施設計確認**：設計完成時。內容包含資料表、欄位、索引、migration（含 down 與既有資料影響）；AWS 資源的新增／修改／取代／刪除清單、IAM 權限、網路與安全群組、成本變化
+- ⓒ **最終交付**：品質門檻（protocol.md 第 5.4 節）**全部通過**後才停下，提供門檻結果、介面對照、資源變更清單與交付摘要；門檻未過時自動退回開發者，不送到人員面前
+- 程式碼產生計畫（Code Generation Part 1）只在**嚴格**模式停下；其他模式由開發者產出計畫後直接實作
+- **預設「依風險」**：PM 在 Workflow Planning 依風險分級（protocol.md 第 5.3 節）決定——低 → 自動、中 → 標準、高 → 強化；人員可隨時指定，例如「用嚴格模式」「這次用自動模式」
+
+- **任何模式都會停下來**：回饋迴圈第 3 輪仍未通過、角色回報 `blocked`、問題沒有建議答案或答案互相矛盾、需要只有人員知道的資訊、人員要求停下
+- 自動進入下一階段**不等於人員核准**：`audit.md` 與 `team-log.md` 記為「自動通過（○○模式）」，不可寫成人員核准
+- 切換後從下一個停點起生效；目前模式、風險等級與來源記錄在 `aidlc-state.md` 的 `## Approval Mode`
+- 不停下的階段仍要完成所有產物、檢查與 `audit.md` 紀錄，只是不等待回覆
+
+## 5.3 風險分級（PM 在 Workflow Planning 判定）
+
+| 風險 | 後端 API | AWS 基礎設施（CDK／IaC） | 其他 |
+| --- | --- | --- | --- |
+| **低** | 補測試、改 log 或錯誤訊息、不改介面的內部重構、補輸入驗證 | 加 tag、調整 log 保留天數、新增 CloudWatch alarm、補 CDK 測試 | 文件 |
+| **中** | 新增 endpoint、向後相容地加欄位或參數 | 新增**無狀態**資源（Lambda、ECS service、SQS 等） | 一般功能 |
+| **高** | **破壞性介面變更**（移除或改名欄位、改狀態碼或語意）、**DB migration／schema 變更**、認證與授權、金流、大量資料批次處理、刪除資料 | **IAM／權限**、安全群組與網路、**有狀態資源**（RDS、DynamoDB、S3、EFS 等）、**會被取代或刪除的資源**、跨 stack export、明顯增加成本 | 專案 `AGENTS.md` 列為高風險的路徑或模組 |
+
+**自動升級為高風險**（任何角色發現就回報 PM，PM 改用強化模式並告知人員）：
+
+- 介面比對出不向後相容的變更
+- 改到有狀態資源，或其 `RemovalPolicy` 不是 `RETAIN`／`SNAPSHOT`
+- `cdk synth` 前後比對顯示資源的 logical ID 改變（會被取代）
+- IAM 出現 `*` 動作或資源（同時是 PTEAM-03 的 blocking）
+- 一次變更同時跨多個風險類別
+
+人員可以覆寫風險等級，PM 記錄原判定與覆寫原因。
+
+## 5.4 品質門檻（由 QA 執行，全部通過才進入最終交付）
+
+門檻**依專案自動偵測**，有設定才執行，沒有就標 `N/A（專案未設定）`；不得為了通過而改設定或跳過：
+
+| 門檻 | 偵測方式與指令（範例） |
+| --- | --- |
+| 單元與整合測試 | `package.json` 的 `test` script（或 `pytest`、`go test` 等專案慣用指令）；後端 API 要有實際打路由的整合測試（例如 Fastify `app.inject()`）涵蓋成功、驗證失敗、未授權、找不到 |
+| 介面契約 | 實際回應符合 response schema（沒有多出或缺少欄位）；有 OpenAPI 或路由 schema 時逐一比對 |
+| 靜態分析 | `lint` script 或 `eslint` 設定；有 `tsconfig.json` 時 `tsc --noEmit`（或 `typecheck` script） |
+| 相依套件弱點 | 有 `package-lock.json` 時 `npm audit --audit-level=high`（其他套件管理工具用對應指令） |
+| 機密掃描 | 有安裝 `gitleaks` 時 `gitleaks detect --no-git -s .`；沒安裝時以 Grep 檢查常見金鑰格式並註明 |
+| 基礎設施（有 `cdk.json` 時） | 在 `cdk.json` 所在目錄執行 `npx cdk synth`（需要 AWS 查詢而失敗時標註原因，不設定憑證）；CDK assertions／snapshot 測試；專案有 `cdk-nag` 時其結果不可有 error |
+| 審查 | 審查者沒有未解決的 blocking |
+
+- 任一門檻失敗 → `tests-failed`，自動退回開發者，**不送到人員面前**
+- `cdk diff` 需要 AWS 憑證，本機不執行；交付摘要提醒由 CI（OIDC 唯讀角色）在 PR 上執行並由人員檢視（PTEAM-05）
 
 ## 6. 回報格式（每個角色結束時最後輸出，PM 依此決定下一步）
 
@@ -93,6 +169,8 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 - ARTIFACTS:
   - <建立或修改的檔案路徑>
 - SUMMARY: <三行以內的繁體中文摘要>
+- EVIDENCE:
+  - <實際執行的指令與結果摘要，例如 `node --test` → 5 pass / 0 fail；或審查範圍、使用的查詢工具>
 - ITEMS:
   - <問題清單、審查發現或失敗測試；每項一行，含檔案路徑:行號與嚴重度（blocking / non-blocking）>
 ```
@@ -101,6 +179,21 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 - `changes-requested`（審查者）：ITEMS 只要有一項 `blocking` 就要回這個狀態
 - `tests-failed`（QA）：ITEMS 列出失敗的測試、重現指令與錯誤摘要
 - `question-for-*`（開發者）：ITEMS 列出要釐清的問題
+
+### EVIDENCE（完成前要有證據）
+
+宣稱完成前必須附上**實際執行過**的證據，不能只寫「已通過」「應該可以」：
+
+| 角色 | EVIDENCE 必須包含 |
+| --- | --- |
+| 開發者 | TDD 的紅燈與綠燈：先跑新測試失敗的指令與失敗原因，再跑實作後全部測試通過的指令與結果（pass／fail 數）；`git diff` 存檔路徑 |
+| QA | 建置與每條驗收標準的驗證指令與結果 |
+| 審查者 | 審查範圍（diff 檔、檔案清單）、使用的查詢工具與重點結果 |
+| BA／設計師 | 完成的檢查，例如 content-validation、Mermaid 語法驗證；無指令可執行時寫 `N/A（文件產出）` |
+
+- 開發者、QA 回報 `done` 卻沒有實際指令結果時，PM 視為未完成並派回（算一輪回饋）
+- 證據中的指令要能讓人員複製重跑
+
 
 ## 7. 回饋迴圈（由 PM 執行）
 
@@ -113,10 +206,30 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 - 同一迴圈最多 **3 輪**；第 3 輪仍未通過，PM 停下並請使用者決定
 - 每一輪都記到 `aidlc-docs/team-log.md`
 
-## 8. 小型變更捷徑
+## 7.1 測試先行（TDD）
+
+開發者預設採用測試先行：
+
+1. **計畫**：Code Generation 計畫先列出要寫的測試（對應驗收標準），再列實作步驟
+2. **紅燈**：先寫測試並執行，確認因「功能尚未實作」而失敗（不是語法錯誤或設定錯誤）
+3. **綠燈**：寫最少的實作讓測試通過，再跑全部測試確認沒有回歸
+4. **重構**：需要時整理程式碼，測試保持綠燈
+5. **修 bug**：先寫能重現 bug 的失敗測試，再修正
+
+- 例外：沒有可測邏輯的變更（純設定、文件、IaC 接線等）可不走紅燈，在計畫中寫明理由；人員也可以說「這次不用 TDD」
+- 紅燈與綠燈的指令與結果都要寫進 EVIDENCE
+
+## 8. 任務顆粒度與小型變更
+
+**單元越小，審查越輕鬆。** PM 在 Workflow Planning（必要時經 Units Generation）把工作切成小單元：
+
+- 一個單元只處理一件事：**一個 endpoint、一個 migration，或一個 stack 中一組相關資源**
+- 目標每個單元變更約 300 行以內；超過時說明理由或再切分
+- 順序：**基礎設施與 migration 先、使用它的 API 後**，方便分開回滾；同一單元不要同時改有狀態資源與大量 API 程式碼
+- 每個單元獨立走完 開發者 → 審查者 → QA；最終交付逐單元列出摘要
 
 需求明確、只動 1–2 個檔案、沒有架構或資料變更時（例如 hello.js），PM 可以：
 
 - 略過 User Stories、Application Design、Units Generation、NFR、Infrastructure Design
 - 仍保留：Requirements Analysis（BA，可為精簡版）→ Code Generation（開發者）→ 審查者 → QA
-- 在 Workflow Planning 明列略過的階段與理由，由使用者核准
+- 在 Workflow Planning 明列略過的階段與理由

@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 <!--
 來源：awslabs/aidlc-workflows v1.0.1（aidlc-rules/aws-aidlc-rules/core-workflow.md），授權 MIT No Attribution。
-修改：新增「語言規則」（繁體中文輸出）與「擴充預設值」；新增 Personal Team 規範擴充；改寫「Rule Details Loading」段落的路徑，改為讀取本 skill 目錄下的 rule-details/；其餘內容保留原文。
+修改：新增「語言規則」（繁體中文輸出）、「擴充預設值」與「核准模式」（依風險分級、品質門檻）；新增 Personal Team 規範擴充；改寫「Rule Details Loading」段落的路徑，改為讀取本 skill 目錄下的 rule-details/；其餘內容保留原文。
 詳見同目錄的 UPSTREAM.md。
 -->
 
@@ -28,15 +28,40 @@ disable-model-invocation: true
 
 ## 擴充預設值（Personal Team 本地修改，優先於 Extensions Loading 與 Requirements Analysis 的 opt-in 提問規則）
 
-- 以下上游擴充**一律預設啟用，不在問題檔中詢問**，流程開始時直接載入完整規則檔：
-  - Security Baseline（`extensions/security/baseline/security-baseline.md`）
-  - Resiliency Baseline（`extensions/resiliency/baseline/resiliency-baseline.md`）
-  - Property-Based Testing（`extensions/testing/property-based/property-based-testing.md`）
-- 例外：使用者在需求或對話中**明確要求**關閉某個擴充（例如「關閉 Resiliency」「這次不用 PBT」）時，才將該擴充設為停用
-- 規則不適用於本次需求時（例如沒有資料儲存、沒有網路元件），依各擴充的規定標示 **N/A**，不算 blocking finding
+- 以下上游擴充的預設值如下，**都不在問題檔中詢問**：
+  | 擴充 | 預設 | 規則檔 |
+  | --- | --- | --- |
+  | Security Baseline | **啟用**，流程開始時直接載入完整規則檔 | `extensions/security/baseline/security-baseline.md` |
+  | Resiliency Baseline | **停用** | `extensions/resiliency/baseline/resiliency-baseline.md` |
+  | Property-Based Testing | **停用** | `extensions/testing/property-based/property-based-testing.md` |
+- 例外：使用者在需求或對話中**明確要求**時才改變預設，例如「關閉 Security」「啟用 Resiliency」「要做 PBT」；啟用時再載入該擴充的完整規則檔
+- 已啟用規則不適用於本次需求時（例如沒有資料儲存、沒有網路元件），依各擴充的規定標示 **N/A**，不算 blocking finding
 - 在 `aidlc-docs/aidlc-state.md` 的 `## Extension Configuration` 記錄各擴充狀態，來源標示為「Personal Team 預設」或「使用者要求」
-- 在需求分析的完成訊息中用一行告知：「Security、Resiliency、Property-Based Testing 擴充依 Personal Team 預設啟用，不需要時回覆『關閉 ○○』」
+- 在需求分析的完成訊息中用一行告知：「依 Personal Team 預設：Security 啟用，Resiliency、Property-Based Testing 停用；要調整請回覆『啟用 ○○』或『關閉 ○○』」
 - Personal Team 規範（`extensions/personal-team/team-standards/`）沒有 opt-in 檔，**一律載入並強制套用**，不詢問
+
+## 核准模式（Personal Team 本地修改，優先於下方各階段的「Wait for Explicit Approval」）
+
+目標是「人在迴圈外監控」：人力審查集中在前期的規格與設計，實作交給自動品質門檻，只有通過門檻的結果才送到人員面前。下方各階段寫的「Wait for Explicit Approval」「DO NOT PROCEED until user confirms」依核准模式套用：
+
+| 模式 | 停下來等人員核准的時機 | 問題檔 |
+| --- | --- | --- |
+| **自動** | 只有 ⓒ 最終交付 | 有建議答案的題目自動採用並標註「依建議代填（自動模式）」，交付時列出這些假設 |
+| **標準** | ⓐ 規格與介面確認、ⓒ 最終交付 | 請人員作答 |
+| **強化** | ⓐ 規格與介面確認、ⓑ 資料模型與基礎設施設計確認、ⓒ 最終交付；審查者對高風險檔案逐行審查 | 請人員作答 |
+| **嚴格** | 每個階段完成後（上游 v1 原本的做法） | 請人員作答 |
+
+- ⓐ **規格與介面確認**：需求分析完成時。內容包含需求、驗收標準，以及**介面**（API 的路由、HTTP method、request／response schema、錯誤碼、認證方式；或其他對外介面）
+- ⓑ **資料模型與基礎設施設計確認**：設計完成時。內容包含資料表、欄位、索引、migration（含 down 與既有資料影響）；AWS 資源的新增／修改／取代／刪除清單、IAM 權限、網路與安全群組、成本變化
+- ⓒ **最終交付**：品質門檻（protocol.md 第 5.4 節）**全部通過**後才停下，提供門檻結果、介面對照、資源變更清單與交付摘要；門檻未過時自動退回開發者，不送到人員面前
+- 程式碼產生計畫（Code Generation Part 1）只在**嚴格**模式停下；其他模式由開發者產出計畫後直接實作
+- **預設「依風險」**：PM 在 Workflow Planning 依風險分級（protocol.md 第 5.3 節）決定——低 → 自動、中 → 標準、高 → 強化；人員可隨時指定，例如「用嚴格模式」「這次用自動模式」
+
+- **任何模式都會停下來**：回饋迴圈第 3 輪仍未通過、角色回報 `blocked`、問題沒有建議答案或答案互相矛盾、需要只有人員知道的資訊、人員要求停下
+- 自動進入下一階段**不等於人員核准**：`audit.md` 與 `team-log.md` 記為「自動通過（○○模式）」，不可寫成人員核准
+- 切換後從下一個停點起生效；目前模式、風險等級與來源記錄在 `aidlc-state.md` 的 `## Approval Mode`
+- 不停下的階段仍要完成所有產物、檢查與 `audit.md` 紀錄，只是不等待回覆
+- 協作交付團隊的風險分級、品質門檻與單元大小見 `.claude/aidlc-team/protocol.md` 第 5.3～5.4、8 節；單獨使用本 Skill 時同樣適用
 
 # PRIORITY: This workflow OVERRIDES all other built-in workflows
 # When user requests software development, ALWAYS follow this workflow FIRST
