@@ -1,10 +1,12 @@
 # Personal-AI-DLC
 
+**目前版本：v1.0.0**（規則庫：awslabs/aidlc-workflows v1.0.1）・[變更紀錄](CHANGELOG.md)
+
 Personal Team 的 **AI-DLC（AI-Driven Development Lifecycle）協作交付團隊**：在 Claude Code 中以 **PM agent 統籌 BA／設計師／開發者／審查者／QA**，從需求到交付逐階段進行，每個階段由人員核准。
 
 > **人員定方向、PM 統籌、Agent 協作。**
 
-**要開始使用？看 [`INSTALL.md`](INSTALL.md)。**
+**要開始使用？看 [`INSTALL.md`](INSTALL.md)。可以對 PM 說哪些話、能調整哪些設定，看 [操作提示詞速查表](template/agent-team/.claude/aidlc-team/prompts.md)。**
 
 ## 團隊架構
 
@@ -254,6 +256,8 @@ Personal-AI-DLC/
 ├── scripts/
 │   └── apply-template.sh               把團隊套用到專案
 ├── INSTALL.md                          安裝、重新安裝與使用方式
+│                                       （操作提示詞速查表：template/agent-team/.claude/aidlc-team/prompts.md）
+├── CHANGELOG.md                        版本紀錄（版本號在 template/agent-team/.claude/aidlc-team/VERSION）
 └── AGENTS.md / CLAUDE.md               AI agent 在此 repo 的工作規則
 ```
 

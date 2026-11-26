@@ -30,7 +30,14 @@
 - `template/skill/.claude/settings.json`：權限關卡。`ask` 只列**高風險路徑**（migration、SQL、IaC、workflow、auth、`.env`），一般程式碼交給品質門檻；`deny` 禁止本機部署與強制推送。不要把 `.md` 加入 `ask`（`aidlc-docs/` 需要自由寫入）
 - `template/agent-team/.claude/`：協作交付團隊（PM + BA／設計師／開發者／審查者／QA subagents），角色規則依賴 v1 Skill；共用協定放 `aidlc-team/protocol.md`，不放進 `agents/`
 - 根目錄的 `.claude/`、`aidlc-docs/` 只會出現在 `trial/*` branch，不要 merge 進 `main`
+- `template/agent-team/.claude/aidlc-team/prompts.md` 是使用者的操作提示詞速查表：新增或修改使用者可以下的指令、可調整的設定（模式、預設值、開關）時，必須同步更新這份文件與 `pm.md` 的「使用者可以下的指令」
 - `scripts/apply-template.sh` 只套用協作交付團隊（`agent-team/` + `skill/`）；修改本地規則時，`SKILL.md` 與 `protocol.md` 要一起改
+
+## 版本
+
+- 版本號只有一份：`template/agent-team/.claude/aidlc-team/VERSION`（SemVer，規則見 `CHANGELOG.md`）
+- 修改 `template/` 的 PR 必須同時更新 `VERSION`、在 `CHANGELOG.md` 最上方新增版本段落，並更新 `README.md` 開頭的「目前版本」
+- 合併後建立 git tag `v<版本>`
 
 ## 溝通與 Git 慣例
 

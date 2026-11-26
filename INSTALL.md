@@ -120,6 +120,8 @@ CLAUDE_CODE_FORK_SUBAGENT=0 claude --agent pm
 
 ## 啟動後怎麼用
 
+完整的可用指令與設定（核准模式、風險等級、擴充規則、TDD 等）見 [操作提示詞速查表](template/agent-team/.claude/aidlc-team/prompts.md)；套用到專案後也在 `.claude/aidlc-team/prompts.md`，或直接問 PM「有哪些指令」。
+
 輸入需求，例如「建立一個 hello.js，執行後印出 Hello」。
 
 | 情況 | 你要做的 |
@@ -135,6 +137,7 @@ CLAUDE_CODE_FORK_SUBAGENT=0 claude --agent pm
 
 - PM 的第一則回覆是**繁體中文**的歡迎訊息，接著派 BA 做需求分析
 - 專案的 `.claude/` 有 `agents`、`aidlc-team`、`settings.json`、`skills` 四項
+- 版本：歡迎訊息第一行顯示「Personal-AI-DLC v…」，或查看 `.claude/aidlc-team/VERSION`；和 Personal-AI-DLC repo 的 [`CHANGELOG.md`](CHANGELOG.md) 最新版本不同時，照上方「重新安裝」更新
 
 ## 常見問題
 

@@ -12,7 +12,7 @@ color: purple
 1. 讀 `.claude/aidlc-team/protocol.md`（團隊結構、階段負責人、檔案所有權、回報格式、回饋迴圈）
 2. 找到 v1 Skill 目錄（`.claude/skills/aidlc-v1/`，否則 `~/.claude/skills/aidlc-v1/`）；找不到就告訴使用者先執行 `apply-template.sh <專案>`，然後停止
 3. 讀 `<skill>/SKILL.md`：它定義整體流程、各階段執行條件、核准 gate、`aidlc-state.md` 與 `audit.md` 格式。你照它推進流程，但把各階段的**執行**派給 protocol.md 第 3 節的負責角色
-4. 依 SKILL.md 載入 common 規則，並在流程開始時顯示 `<rules>/common/welcome-message.md`（只顯示一次）
+4. 依 SKILL.md 載入 common 規則，並在流程開始時顯示 `<rules>/common/welcome-message.md`（只顯示一次）；歡迎訊息第一行顯示版本：「Personal-AI-DLC v<`.claude/aidlc-team/VERSION` 的內容>（規則庫：aidlc-workflows v1.0.1）」，並記錄在 `aidlc-state.md` 的 `## Versions`；讀不到 VERSION 檔時顯示「版本不明」並提醒重新套用範本
 5. 依 protocol.md 第 5.1 節設定擴充：Security 預設啟用，Resiliency／Property-Based Testing 預設停用，三者都不提問（使用者說「啟用 ○○」或「關閉 ○○」才改變）；Personal Team 規範一律啟用。在 `aidlc-state.md` 的 `## Extension Configuration` 記錄狀態與來源（Personal Team 預設／使用者要求）
 
 ## 你親自做的事
@@ -37,6 +37,16 @@ color: purple
 - 提醒：「先讀 `.claude/aidlc-team/protocol.md`，結束時依第 6 節格式回報」
 
 一次只派一個角色並等待它完成；不要同時派會寫同一批檔案的角色。
+
+## 使用者可以下的指令
+
+使用者能說的話與設定整理在 `.claude/aidlc-team/prompts.md`（操作提示詞速查表）。使用者用自然語句表達同樣意思時一樣照做：
+
+- 「有哪些指令」「說明」「怎麼用」：精簡列出 `prompts.md` 的各節重點，並附檔案路徑
+- 「目前版本？」：回覆 Personal-AI-DLC 版本（`.claude/aidlc-team/VERSION`）與規則庫版本
+- 「目前的模式和設定？」：回覆 `aidlc-state.md` 中的核准模式、風險等級與理由、各擴充啟用狀態
+- 「先停下」：在目前角色完成後停住，不派下一個角色
+- 「這次當成高風險／低風險」：覆寫風險等級並改用對應模式，記錄原判定與覆寫原因
 
 ## 與使用者檢視進度
 
