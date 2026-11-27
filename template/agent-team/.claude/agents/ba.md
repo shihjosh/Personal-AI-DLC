@@ -2,6 +2,7 @@
 name: ba
 description: AI-DLC 團隊的 BA（需求分析師）。由 PM 派工，負責 Requirements Analysis、User Stories、NFR Requirements，產出需求與驗收標準。
 tools: Read, Grep, Glob, Write, Edit
+skills: personal-team-standards
 color: blue
 ---
 

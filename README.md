@@ -1,6 +1,6 @@
 # Personal-AI-DLC
 
-**目前版本：v1.0.0**（規則庫：awslabs/aidlc-workflows v1.0.1）・[變更紀錄](CHANGELOG.md)
+**目前版本：v1.2.0**（規則庫：awslabs/aidlc-workflows v1.0.1）・[變更紀錄](CHANGELOG.md)
 
 Personal Team 的 **AI-DLC（AI-Driven Development Lifecycle）協作交付團隊**：在 Claude Code 中以 **PM agent 統籌 BA／設計師／開發者／審查者／QA**，從需求到交付逐階段進行，每個階段由人員核准。
 
@@ -49,7 +49,7 @@ flowchart TB
 | **PM agent** | 指導並協調 Agent；追蹤問題解決與交付 | 主 session（`claude --agent pm`）；一次派一個角色並等待回報；未解問題記在 `team-log.md`，交付前確認沒有未解的 blocking 問題 |
 | **BA** | 需求與驗收標準 | 需求分析、使用者故事、非功能需求 |
 | **設計師** | 使用者流程與方案設計 | 逆向工程、應用程式設計、單元拆分、功能／非功能／基礎設施設計；產出**介面規格**（路由、schema、錯誤碼）、**資料模型與 migration**、**AWS 資源變更清單** |
-| **開發者** | 程式碼與自動化測試 | 程式碼產生（先核准計畫）、**測試先行**（紅燈 → 綠燈）、依回饋修正；完成時把變更存成 `changes.diff` 給審查者 |
+| **開發者** | 程式碼與自動化測試 | 程式碼產生（先寫計畫；只有嚴格模式會停下請你核准計畫）、**測試先行**（紅燈 → 綠燈）、依回饋修正；完成時把變更存成 `changes.diff` 給審查者 |
 | **審查者** | 程式碼、安全與品質審查 | **唯讀**（工具強制）；以這次的 diff 為範圍，檢查呼叫端與同類問題，依審查清單（信任邊界、並行、資料存取、資源與韌性、測試、Personal Team 規範）判定 |
 | **QA** | 驗收測試與修正驗證 | 執行**品質門檻**（測試、介面契約、靜態分析、相依套件弱點、機密掃描、`cdk synth`／CDK 測試），逐條對照驗收標準；門檻全過才進入交付 |
 
@@ -63,14 +63,14 @@ flowchart TB
 
 ## 工作流程
 
-PM 依 AI-DLC 的階段推進，把每個階段派給負責角色。實線框一定執行；虛線框由 PM 依需求複雜度決定。⭐ 是預設停點（ⓐ 規格與介面、ⓒ 最終交付）；🔶 是**高風險**（DB migration、IAM、有狀態資源等）時多停的設計確認（ⓑ）；✋ 是**嚴格**模式才停的其他階段。其餘階段給一行摘要就自動往下，**人力審查集中在前期的規格與設計，實作交給自動品質門檻**。
+PM 依 AI-DLC 的階段推進，把每個階段派給負責角色。實線框一定執行；虛線框由 PM 依需求複雜度決定。⭐ 是標準模式的停點（ⓐ 規格與介面、ⓒ 最終交付；自動模式只停 ⓒ）；🔶 是**高風險**（DB migration、IAM、有狀態資源等）時多停的設計確認（ⓑ）；✋ 是**嚴格**模式才停的其他階段。其餘階段給一行摘要就自動往下，**人力審查集中在前期的規格與設計，實作交給自動品質門檻**。
 
 ```mermaid
 flowchart TD
     START(["人員訂定目標<br/>claude --agent pm，輸入需求"]) --> WD
 
     subgraph INCEPTION["🔵 構思階段（Inception）：決定做什麼、為什麼做"]
-        WD["工作區偵測 · PM"]
+        WD["工作區偵測 · PM<br/>detect-modules.sh 偵測技術模組"]
         RE["逆向工程 · 設計師 ✋<br/>僅既有專案"]
         RA["需求分析 · BA ⭐ⓐ<br/>需求、驗收標準、介面規格"]
         US["使用者故事 · BA ✋"]
@@ -86,13 +86,13 @@ flowchart TD
         ND["非功能設計 · 設計師 ✋"]
         ID["基礎設施設計 · 設計師 🔶ⓑ<br/>AWS 資源變更清單"]
         CG["程式碼產生 · 開發者 ✋<br/>測試先行：紅燈 → 綠燈"]
-        CR["程式碼審查 · 審查者<br/>程式碼、安全與品質"]
+        CR["程式碼審查 · 審查者<br/>依規範 Skill 審查 diff"]
         FD --> NR --> ND --> ID --> CG --> CR
         CR -.->|審查發現 → 程式修正| CG
     end
 
     UG --> FD
-    CR -->|無 blocking| BT["建置與測試 · QA<br/>品質門檻全過才往下"]
+    CR -->|無 blocking| BT["建置與測試 · QA<br/>run-quality-gates.sh 全過才往下"]
     BT -.->|測試失敗 → 修正與重測| CG
     BT --> DONE(["最終交付 ⭐ⓒ：門檻結果、介面對照、資源變更<br/>人員核准後 commit／PR"])
 
@@ -141,44 +141,44 @@ sequenceDiagram
 ```mermaid
 flowchart TB
     subgraph TEAM["Personal-AI-DLC（範本 repo）"]
-        TPL["template/agent-team/.claude<br/>agents/（PM + 5 角色）· aidlc-team/protocol.md"]
-        RULES_LIB["template/skill/.claude/skills/aidlc-v1<br/>團隊的規則庫：SKILL.md · rule-details/ · Personal Team 規範"]
-        GATE["template/skill/.claude/settings.json<br/>權限關卡"]
+        direction LR
+        TPL["agent-team/<br/>PM + 5 角色 · protocol.md<br/>prompts.md · VERSION"]
+        SK["skill/.claude/skills/<br/>aidlc-v1（流程規則庫）<br/>規範 Skill ×4 · quality-gates（腳本）"]
+        GATE["settings.json<br/>權限關卡"]
     end
 
-    subgraph DEV["開發者電腦（Windows / Ubuntu）"]
-        USER(("人員"))
-        subgraph CC["Claude Code（claude --agent pm）"]
-            PM["PM agent"]
-            ROLES["BA · 設計師 · 開發者 · 審查者 · QA<br/>（subagents）"]
+    DOTCLAUDE["專案 .claude/<br/>agents · aidlc-team · skills · settings.json"]
+
+    subgraph USE["開發者電腦（Windows / Ubuntu）"]
+        direction LR
+        subgraph AIDLC["AI-DLC 流程：claude --agent pm"]
+            PM["PM agent<br/>detect-modules.sh 偵測模組"]
+            ROLES["BA · 設計師 · 開發者 · 審查者 · QA<br/>依規範 Skill 工作 · QA 跑 run-quality-gates.sh"]
+            PM -->|派工與轉送回饋| ROLES
         end
-        subgraph PROJ["專案 repo"]
-            DOTCLAUDE[".claude/<br/>agents · aidlc-team · skills · settings.json"]
-            CODE["程式碼與測試"]
-            DOCS["aidlc-docs/<br/>需求 · 設計 · aidlc-state.md · audit.md · team-log.md"]
-        end
+        PLAIN["平常開發：claude<br/>規範 Skill 依情境自動載入"]
     end
 
-    subgraph GH["GitHub"]
-        PR["Pull Request<br/>程式碼 + aidlc-docs 一起 review"]
-        GHA["GitHub Actions<br/>建置 · 測試 · cdk deploy"]
-    end
+    USER(("人員"))
+    OUT["專案程式碼與測試<br/>aidlc-docs/（需求 · 設計 · 紀錄）"]
+    PR["GitHub Pull Request<br/>程式碼 + aidlc-docs 一起 review"]
+    GHA["GitHub Actions<br/>建置 · 測試 · cdk diff／deploy"]
     AWS[("AWS")]
 
-    TPL & RULES_LIB & GATE -->|apply-template.sh| DOTCLAUDE
-    DOTCLAUDE -->|載入角色、協定與規則| CC
-    USER <-->|目標、核准、檢視進度| PM
-    PM -->|派工與轉送回饋| ROLES
-    ROLES -->|開發者寫入| CODE
-    ROLES -->|各角色寫產出| DOCS
-    PM -->|記錄| DOCS
-    PROJ -->|git push| PR
+    TEAM -->|apply-template.sh| DOTCLAUDE
+    DOTCLAUDE -->|載入| USE
+    USER -->|目標、核准、進度| PM
+    USER -->|一般需求| PLAIN
+    AIDLC & PLAIN --> OUT
+    OUT -->|git push| PR
     PR -->|review 後 merge| GHA
     GHA -->|OIDC 短期憑證| AWS
 ```
 
-- **團隊定義**：`template/agent-team/.claude/` 的 6 個 agent 與共用協定 `protocol.md`
-- **規則庫**：各角色依 `template/skill/.claude/skills/aidlc-v1/` 的 AI-DLC 階段規則工作（上游 awslabs/aidlc-workflows v1.0.1 + Personal Team 本地規則）
+- **團隊定義**：`template/agent-team/.claude/` 的 6 個 agent、共用協定 `protocol.md`、操作提示詞 `prompts.md` 與 `VERSION`
+- **流程規則庫**：PM 依 `aidlc-v1` Skill 的 AI-DLC 階段規則推進（上游 awslabs/aidlc-workflows v1.0.1 + Personal Team 本地規則）
+- **規範 Skill**：`personal-team-standards`、`backend-api-standards`、`frontend-standards`、`aws-cdk-standards`，AI-DLC 流程中由團隊角色依技術模組套用；**平常直接用 `claude` 開發時也會依情境自動載入**
+- **腳本**：`quality-gates` Skill 的 `detect-modules.sh`、`run-quality-gates.sh`，偵測與門檻結果一致、不靠模型每次推導
 - **交付**：程式碼與 `aidlc-docs/` 一起進 PR review；部署只由 GitHub Actions 透過 OIDC 執行，開發者電腦不放可部署的 AWS 憑證
 
 ## Personal Team 規則（所有角色適用）
@@ -190,6 +190,8 @@ flowchart TB
 | 擴充預設值 | **Security 預設啟用**；Resiliency、Property-Based Testing 預設停用；三者都不提問。要調整就對 PM 說「啟用 Resiliency」「關閉 Security」等；不適用的規則標示 N/A |
 | Personal Team 規範（PTEAM-01～07） | 部署只走 CI + OIDC、AWS 資源用 CDK、IAM 最小權限、機密不進 repo、破壞性與成本變更標示（含 `cdk diff`）、自動化測試、EAC_Wiki 唯讀；違反即為 blocking，審查者逐條檢查 |
 | 權限關卡 | `.claude/settings.json`：**高風險檔案**（`migrations/`、`*.sql`、`infra/`、`cdk/`、`*-stack.ts`、`.github/workflows/`、`auth/`、`.env*`）寫入前一定要你確認；**本機部署與強制推送直接禁止**（`cdk deploy`／`destroy`、`sam deploy`、`aws cloudformation deploy`／`delete-stack`、`git push --force`）；一般程式碼交給品質門檻，不再每檔詢問 |
+| 規範 Skill | 規範都是**獨立的 Skill**（`personal-team-standards`、`backend-api-standards`、`frontend-standards`、`aws-cdk-standards`）：AI-DLC 團隊角色套用，**平常直接用 Claude Code 開發時也會自動載入**；`quality-gates` Skill 附偵測與品質門檻腳本，結果一致、省 token |
+| 技術模組 | 專案可以是**前端（Vue 2／3）、後端 API、AWS CDK** 的任意組合（含 monorepo）；PM 啟動時自動偵測並只套用對應規則：BE-01～08、FE-01～08、CDK-01～08。專案 `AGENTS.md` 的聲明優先；跨模組需求以 API 契約為前後端共同介面，依 CDK → migration → API → 前端 的順序切單元 |
 | 品質門檻 | 依專案自動偵測、有設定才執行：測試（含 API 整合測試）、介面契約、lint／型別檢查、`npm audit`、機密掃描、`cdk synth`／CDK 測試／`cdk-nag`；**全部通過才送到你面前**，沒過自動退回開發者。`cdk diff` 需要 AWS 憑證，由 CI（OIDC 唯讀）在 PR 上執行 |
 | 任務顆粒度 | 一個單元只做一件事（一個 endpoint、一個 migration 或一組相關資源，約 300 行內）；基礎設施與 migration 先、API 後 |
 | 完成要有證據 | 每個角色回報附 EVIDENCE：開發者要有 TDD 紅燈與綠燈的指令與結果，QA 要有每條驗收標準的驗證結果；沒有實際執行結果，PM 視為未完成並派回 |
@@ -205,9 +207,19 @@ flowchart TB
 
 啟動（在專案目錄）：
 
+```bash
+# Git Bash／Ubuntu
+CLAUDE_CODE_FORK_SUBAGENT=0 claude --agent pm
+```
+
 ```powershell
+# PowerShell
 $env:CLAUDE_CODE_FORK_SUBAGENT = "0"; claude --agent pm
 ```
+
+- **每個專案第一次啟動時接受「信任這個資料夾」對話框**：之後 `settings.json` 的 `allow` 才會生效，偵測與品質門檻腳本才能免確認執行
+- **平常開發也適用規範**：規範 Skill 套用到專案後，直接用 `claude`（不經 PM）開發時也會自動載入；想讓所有專案都適用，把規範 Skill 複製到 `~/.claude/skills/`（見 `INSTALL.md`）
+- 可以對 PM 說的話與可調整的設定：[操作提示詞速查表](template/agent-team/.claude/aidlc-team/prompts.md)
 
 ## 修改團隊（維護者）
 
@@ -218,7 +230,9 @@ $env:CLAUDE_CODE_FORK_SUBAGENT = "0"; claude --agent pm
 1. 從最新的 `main` 開 branch：`git switch main && git pull && git switch -c feat/<描述>`
 2. 修改：
    - 角色：`template/agent-team/.claude/agents/*.md`；共用規則：`template/agent-team/.claude/aidlc-team/protocol.md`
-   - 規則庫：`template/skill/.claude/skills/aidlc-v1/`。`rule-details/` 上游檔案不改；客製寫在 `SKILL.md` 開頭或 `rule-details/extensions/personal-team/`，並記錄在 `UPSTREAM.md`
+   - 規範：`template/skill/.claude/skills/<規範 Skill>/SKILL.md`（新增規範就新增一個 Skill 資料夾，寫好 `description`）
+   - 流程規則庫：`template/skill/.claude/skills/aidlc-v1/`。`rule-details/` 上游檔案不改；客製寫在 `SKILL.md` 開頭，並記錄在 `UPSTREAM.md`
+   - 腳本：`template/skill/.claude/skills/quality-gates/scripts/`
    - subagent 不會自動載入 `SKILL.md` 開頭的本地規則，改了本地規則時要同步更新 `protocol.md`
 3. 在拋棄式目錄套用後用 `claude --agent pm` 跑一次小需求，確認派工順序、回饋迴圈與核准停點
 4. 開 PR（標題與內文用繁體中文），merge 到 `main`
@@ -233,6 +247,8 @@ $env:CLAUDE_CODE_FORK_SUBAGENT = "0"; claude --agent pm
 | 規則庫（v1.0.1 + Personal Team 本地規則） | ✅ 繁體中文、Personal Team 規範、權限關卡皆已實測 |
 | 權限關卡（高風險路徑 ask、本機部署 deny） | ✅ 實測：`acceptEdits` 下 `src/app.js` 直接寫入；`infra/lib/api-stack.ts`、`db/migrations/001.sql` 被擋下要求確認；`cdk deploy --all` 被拒絕 |
 | 完成證據、TDD、以 diff 為範圍的審查 | ✅ 實測（既有專案新增 `divide`、`add` 加型別檢查）：開發者兩輪 TDD 紅燈 → 綠燈（3／10 → 10／10、10／18 → 18／18）並附證據；產出 `changes.diff`，審查者以 diff 為範圍並查呼叫端；QA 驗證 AC-1～19，`npm test` 18 pass／0 fail |
+| 規範 Skill 與腳本（v1.2.0） | ✅ 實測：不經 PM 的一般 session 問「新增 DynamoDB table 要注意什麼」，自動載入 `aws-cdk-standards` 與 `personal-team-standards` 並逐條列出 CDK／PTEAM 規則；`detect-modules.sh` 正確偵測 monorepo 四個子專案；`run-quality-gates.sh` 正確回報 PASS／FAIL／N/A 與 exit code。⚠️ 專案的 `allow` 規則需先在該專案互動啟動並接受信任對話框才會生效，否則腳本執行會要求確認（PM 會改用人工判斷） |
+| 技術模組（v1.1.0） | ✅ 實測（monorepo：`apps/web` Vue 3、`apps/admin` Vue 2.7、`apps/api` Fastify、`infra` CDK）：四個子專案全部正確偵測（含 Vuex／Pinia），記錄於 `## Tech Modules`，歡迎訊息顯示偵測結果；「後台新增列表頁串接 API」判定為中風險 → 標準模式 |
 | 依風險的核准模式 | ✅ 部分實測（Fastify 專案新增 `GET /items/:id`）：PM 判定**中風險** → 標準模式，停點記錄為 ⓐ 規格與介面、ⓒ 最終交付；ⓐ 只呈現介面表（200／400／404）、需求未寫明的假設、驗收標準與範圍外缺口，並自動略過不必要的逆向工程 |
 | 品質門檻、高風險升級（migration 情境） | 🔄 已實作，待端到端實測 |
 | 擴充預設值（Security 啟用；Resiliency、PBT 停用） | ✅ 實測：`aidlc-state.md` 記錄 Security 啟用、Resiliency／PBT 停用（來源「Personal Team 預設」），無問題檔，完成訊息附調整方式；不適用的 Security 規則標示 N/A |
@@ -243,7 +259,7 @@ $env:CLAUDE_CODE_FORK_SUBAGENT = "0"; claude --agent pm
 - 權限關卡只涵蓋檔案編輯工具與列出的指令；`deny` 只比對指令文字，不是安全邊界（例如換個寫法就可能繞過），真正的防線是**本機不放可部署的 AWS 憑證**。`bypassPermissions` 模式下關卡無效，不要使用
 - 高風險路徑是通用預設；專案的 migration 或 IaC 放在其他位置時，請在專案的 `.claude/settings.json` 補上對應路徑
 - 每次交接都會重新讀取資料，token 用量高於單一 agent
-- PM 沒有查詢時間的工具，`team-log.md` 的時間戳記為模型估計值，僅供排序參考
+- 腳本免確認執行（`quality-gates`、`date`）需要專案已接受信任對話框；未信任時 PM 改用人工判斷技術模組，QA 跑門檻會逐次要求確認
 
 ## 目錄結構
 
@@ -251,8 +267,8 @@ $env:CLAUDE_CODE_FORK_SUBAGENT = "0"; claude --agent pm
 Personal-AI-DLC/
 ├── template/
 │   ├── README.md                       範本說明
-│   ├── agent-team/.claude/             協作交付團隊：agents/（PM + 5 角色）、aidlc-team/protocol.md
-│   └── skill/.claude/                  規則庫：skills/aidlc-v1/（SKILL.md、rule-details/、UPSTREAM.md）、settings.json（權限關卡）
+│   ├── agent-team/.claude/             協作交付團隊：agents/（PM + 5 角色）、aidlc-team/（protocol.md、prompts.md、VERSION）
+│   └── skill/.claude/                  skills/：aidlc-v1（流程規則庫）、4 個規範 Skill（personal-team／backend-api／frontend／aws-cdk）、quality-gates（偵測與門檻腳本）；settings.json（權限關卡）
 ├── scripts/
 │   └── apply-template.sh               把團隊套用到專案
 ├── INSTALL.md                          安裝、重新安裝與使用方式

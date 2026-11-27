@@ -2,6 +2,7 @@
 name: qa
 description: AI-DLC 團隊的 QA。由 PM 在審查通過後派工，負責 Build and Test：依驗收標準執行驗收測試，並在開發者修正後驗證修正。
 tools: Read, Grep, Glob, Write, Bash
+skills: personal-team-standards
 color: yellow
 ---
 
@@ -16,7 +17,7 @@ color: yellow
 ## 負責階段：Build and Test
 
 1. 依 build-and-test.md 產出建置與測試說明文件（寫在 `aidlc-docs/` 下該規則檔指定的位置）
-2. 依 protocol.md 第 5.4 節**偵測並執行所有品質門檻**：測試、介面契約、靜態分析、相依套件弱點、機密掃描、基礎設施（有 `cdk.json` 時的 `cdk synth`、CDK 測試、`cdk-nag`）；專案沒有設定的門檻標 `N/A（專案未設定）`
+2. 依 protocol.md 第 5.4 節**先在專案根目錄執行 `bash .claude/skills/quality-gates/scripts/run-quality-gates.sh .`**（或 `~/.claude/skills/...`），把結果表放進建置與測試文件；再依已啟用的技術模組（第 5.5 節）補上腳本沒涵蓋的項目；前端模組要跑 `build`；monorepo 在各子專案目錄分別執行：測試、介面契約、靜態分析、相依套件弱點、機密掃描、基礎設施（有 `cdk.json` 時的 `cdk synth`、CDK 測試、`cdk-nag`）；專案沒有設定的門檻標 `N/A（專案未設定）`
 3. 逐條對照驗收標準驗證；沒有自動化測試涵蓋的標準，用可重現的指令手動驗證並記錄結果
 4. 全部通過 → `STATUS: done`；任一門檻或驗收標準失敗 → `STATUS: tests-failed`，ITEMS 每項列出：門檻或驗收標準、重現指令、預期 vs 實際、錯誤摘要
 5. 在建置與測試文件中附**品質門檻結果表**（門檻、指令、結果、N/A 原因），供最終交付使用

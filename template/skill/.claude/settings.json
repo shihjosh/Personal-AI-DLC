@@ -1,5 +1,13 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(bash .claude/skills/quality-gates/scripts/detect-modules.sh *)",
+      "Bash(bash .claude/skills/quality-gates/scripts/run-quality-gates.sh *)",
+      "Bash(bash ~/.claude/skills/quality-gates/scripts/detect-modules.sh *)",
+      "Bash(bash ~/.claude/skills/quality-gates/scripts/run-quality-gates.sh *)",
+      "Bash(date)",
+      "Bash(date *)"
+    ],
     "ask": [
       "Edit(**/migrations/**)",
       "Edit(**/migration/**)",
@@ -17,9 +25,13 @@
     "deny": [
       "Bash(cdk deploy)",
       "Bash(cdk deploy *)",
+      "Bash(npx cdk deploy)",
       "Bash(npx cdk deploy *)",
+      "Bash(cdk destroy)",
       "Bash(cdk destroy *)",
+      "Bash(npx cdk destroy)",
       "Bash(npx cdk destroy *)",
+      "Bash(sam deploy)",
       "Bash(sam deploy *)",
       "Bash(aws cloudformation deploy *)",
       "Bash(aws cloudformation delete-stack *)",

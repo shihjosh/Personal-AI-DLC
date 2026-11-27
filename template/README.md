@@ -8,13 +8,16 @@
 template/
 ├── agent-team/.claude/                      ← 協作交付團隊
 │   ├── agents/                              pm、ba、designer、developer、reviewer、qa
-│   └── aidlc-team/protocol.md               共用協定：階段負責人、檔案所有權、回報格式、回饋迴圈、Personal Team 規則
-└── skill/.claude/                           ← 團隊的規則庫與權限關卡
-    ├── settings.json                        程式碼寫入前一定要確認（權限關卡）
-    └── skills/aidlc-v1/
-        ├── SKILL.md                         AI-DLC 階段流程（上游 v1.0.1 core-workflow.md + Personal Team 本地規則）
-        ├── rule-details/                    31 個細節規則（原文）+ extensions/personal-team/（Personal Team 規範）
-        └── UPSTREAM.md                      上游版本、授權與本地修改
+│   └── aidlc-team/                          protocol.md（共用協定）、prompts.md（操作提示詞）、VERSION
+└── skill/.claude/
+    ├── settings.json                        權限關卡
+    └── skills/
+        ├── aidlc-v1/                        AI-DLC 階段流程（上游 v1.0.1 + Personal Team 本地規則）
+        ├── personal-team-standards/         Personal Team 規範 PTEAM-01～07（一律套用）
+        ├── backend-api-standards/           後端 API 規範 BE-01～08
+        ├── frontend-standards/              前端規範 FE-01～08（Vue 2／3）
+        ├── aws-cdk-standards/               AWS CDK 規範 CDK-01～08
+        └── quality-gates/                   scripts/detect-modules.sh、scripts/run-quality-gates.sh
 ```
 
 ## 協作交付團隊
@@ -23,7 +26,7 @@ template/
 
 | 角色 | 負責 | 工具 |
 | --- | --- | --- |
-| PM（主 session） | 與人員對話、核准 gate、派工、回饋迴圈、**檢視進度**、**問題追蹤**（`team-log.md` 的未解問題表）；唯一寫 `aidlc-state.md`、`audit.md`、`team-log.md` | `Agent(ba, designer, developer, reviewer, qa)`、讀寫檔 |
+| PM（主 session） | 與人員對話、核准 gate、派工、回饋迴圈、**檢視進度**、**問題追蹤**（`team-log.md` 的未解問題表）；唯一寫 `aidlc-state.md`、`audit.md`、`team-log.md` | `Agent(ba, designer, developer, reviewer, qa)`、讀寫檔、`AskUserQuestion`、Bash（偵測腳本、`date`） |
 | BA | Requirements Analysis、User Stories、NFR Requirements | 讀寫檔 |
 | 設計師 | Reverse Engineering、Application Design、Units Generation、Functional／NFR／Infrastructure Design；產出介面規格、資料模型與 migration、AWS 資源變更清單 | 讀寫檔、codebase-memory-mcp 查詢（選用） |
 | 開發者 | Code Generation（測試先行：紅燈 → 綠燈）、依回饋修正、產出 `changes.diff` | 讀寫檔、Bash、codebase-memory-mcp 查詢（選用） |
@@ -46,6 +49,22 @@ subagent 不會自動載入 `SKILL.md` 開頭的 Personal Team 本地規則，�
 | 語言規則 | 對話與 `aidlc-docs/` 文件一律繁體中文；`[Answer]:`、檔名、`aidlc-state.md` 欄位維持原樣 |
 | 擴充預設值 | **Security 預設啟用**；Resiliency、Property-Based Testing 預設停用；三者都不提問，要調整就說「啟用 Resiliency」「關閉 Security」等；不適用的規則標示 N/A |
 | Personal Team 規範（PTEAM-01～07） | 部署只走 CI + OIDC、AWS 資源用 CDK、IAM 最小權限、機密不進 repo、破壞性變更標示與 `cdk diff`、自動化測試、EAC_Wiki 唯讀；違反時該階段不能繼續 |
+
+## 規範 Skill 與技術模組
+
+規範都是**獨立的 Skill**：在 AI-DLC 流程中由團隊角色套用，**平常直接用 Claude Code 開發時也會依 description 自動載入**。
+
+| Skill | 內容 | 何時套用 |
+| --- | --- | --- |
+| `personal-team-standards` | PTEAM-01～07 | 一律；團隊角色以 `skills:` 預先載入 |
+| `backend-api-standards` | BE-01～08 | 偵測到後端 API（`fastify`、`express`、`@nestjs/core` 等） |
+| `frontend-standards` | FE-01～08（Vue 2／3；React 等其他框架只套用通用部分） | 偵測到前端（`vue` 依版本判定 2／3、`react` 等） |
+| `aws-cdk-standards` | CDK-01～08 | 偵測到 `cdk.json` 或 `aws-cdk-lib` |
+| `quality-gates` | `detect-modules.sh`（偵測技術模組）、`run-quality-gates.sh`（依專案跑 test、lint、typecheck、build、npm audit、cdk synth、gitleaks） | PM 偵測模組、QA 跑門檻時執行；平常也可以請 Claude「跑品質門檻」 |
+
+- monorepo 依子目錄分別偵測；專案 `AGENTS.md` 的聲明優先
+- 腳本只讀取專案、執行已設定的工具，不安裝套件、不修改檔案、不部署
+- 想讓所有專案都套用規範（不只 AI-DLC 專案）：把這些 Skill 資料夾複製到 `~/.claude/skills/`
 
 ## 核准模式、風險分級與品質門檻
 
@@ -78,9 +97,9 @@ subagent 不會自動載入 `SKILL.md` 開頭的 Personal Team 本地規則，�
 | `deny`（直接拒絕） | `cdk deploy`、`cdk destroy`、`sam deploy`、`aws cloudformation deploy`、`aws cloudformation delete-stack`、`git push --force`／`-f`（含 `npx` 形式） |
 | 一般程式碼 | 不詢問，交給品質門檻與審查者 |
 
-- 專案已有 `.claude/settings.json` 時 `apply-template.sh` 會 SKIP，請手動合併 `ask` 與 `deny` 清單
+- 專案已有 `.claude/settings.json` 時 `apply-template.sh` 會 SKIP，請手動合併 `allow`、`ask`、`deny` 三個清單
 - 專案的 migration 或 IaC 在其他路徑時，在專案的 `settings.json` 補上
-- 不要為了少按幾次去加 `permissions.allow`（`allow` 蓋不過 `ask`；`Write(path)` 不會生效，只認 `Edit(path)`）
+- `allow` 只放唯讀或低風險的指令（偵測與門檻腳本、`date`）；不要把高風險路徑或部署指令加進 `allow`（`allow` 也蓋不過 `ask`；路徑規則只認 `Edit(path)`，`Write(path)` 不會生效）
 - `deny` 只比對指令文字，不是安全邊界；真正的防線是本機不放可部署的 AWS 憑證。`bypassPermissions` 模式下規則無效
 - 不要把 `.md` 加入 `ask`，`aidlc-docs/` 需要自由寫入
 
@@ -93,4 +112,4 @@ subagent 不會自動載入 `SKILL.md` 開頭的 Personal Team 本地規則，�
 ## 更新範本
 
 1. 在 `Personal-AI-DLC` 從最新 `main` 開 branch 修改 `template/`，在拋棄式目錄套用後用 `claude --agent pm` 跑一次小需求，再開 PR
-2. merge 後，到各專案刪除 `.claude/agents/`、`.claude/aidlc-team/`、`.claude/skills/aidlc-v1/` 後重跑 `apply-template.sh`（`settings.json` 有自訂內容時手動比對），以 PR 帶入
+2. merge 後，到各專案刪除範本管理的檔案（見 `INSTALL.md`「重新安裝」）後重跑 `apply-template.sh`（`settings.json` 有自訂內容時手動比對），以 PR 帶入

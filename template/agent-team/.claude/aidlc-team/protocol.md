@@ -23,14 +23,16 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 1. `.claude/skills/aidlc-v1/`（專案內）
 2. `~/.claude/skills/aidlc-v1/`（使用者層級）
 
-以下簡稱 `<rules>` = 上述目錄下的 `rule-details/`，`<skill>` = 上述目錄下的 `SKILL.md`。
+以下簡稱 `<rules>` = 上述目錄下的 `rule-details/`，`<skill>` = 上述目錄下的 `SKILL.md`，`<skills>` = 該目錄的上一層（`.claude/skills/` 或 `~/.claude/skills/`）。
+
+Personal Team 規範是獨立的 Skill，放在 `<skills>/` 下：`personal-team-standards`、`backend-api-standards`、`frontend-standards`、`aws-cdk-standards`；工具 Skill `quality-gates` 提供 `scripts/detect-modules.sh` 與 `scripts/run-quality-gates.sh`。
 
 每個角色都要讀：
 
 - `<rules>/common/content-validation.md`（建立任何檔案前）
 - `<rules>/common/question-format-guide.md`（要提問時）
 - `<rules>/common/terminology.md`
-- `<rules>/extensions/personal-team/team-standards/personal-team-standards.md`（Personal Team 規範，一律適用）
+- `personal-team-standards` Skill（PTEAM-01～07，一律適用；BA／設計師／開發者／審查者／QA 已在 `skills:` 預先載入，PM 讀 `<skills>/personal-team-standards/SKILL.md`）
 - `<skill>` 中與自己負責階段相關的段落（各階段的執行條件與步驟）
 
 已啟用的 extensions（見 `aidlc-docs/aidlc-state.md` 的 `## Extension Configuration`）對所有角色都是硬性規則。
@@ -66,7 +68,7 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 | NFR Design | 設計師 | `construction/nfr-design.md` |
 | Infrastructure Design | 設計師 | `construction/infrastructure-design.md` |
 | Code Generation | 開發者 | `construction/code-generation.md` |
-| 程式碼審查（本團隊新增） | 審查者 | 已啟用的 `extensions/`、本檔第 6 節 |
+| 程式碼審查（本團隊新增） | 審查者 | `agents/reviewer.md`、已啟用的擴充規則、規範 Skill（第 5.5 節） |
 | Build and Test | QA | `construction/build-and-test.md` |
 | Operations | PM（目前為 placeholder） | `operations/operations.md` |
 
@@ -115,9 +117,9 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 
 - ⓐ **規格與介面確認**：需求分析完成時。內容包含需求、驗收標準，以及**介面**（API 的路由、HTTP method、request／response schema、錯誤碼、認證方式；或其他對外介面）
 - ⓑ **資料模型與基礎設施設計確認**：設計完成時。內容包含資料表、欄位、索引、migration（含 down 與既有資料影響）；AWS 資源的新增／修改／取代／刪除清單、IAM 權限、網路與安全群組、成本變化
-- ⓒ **最終交付**：品質門檻（protocol.md 第 5.4 節）**全部通過**後才停下，提供門檻結果、介面對照、資源變更清單與交付摘要；門檻未過時自動退回開發者，不送到人員面前
+- ⓒ **最終交付**：品質門檻（本檔第 5.4 節）**全部通過**後才停下，提供門檻結果、介面對照、資源變更清單與交付摘要；門檻未過時自動退回開發者，不送到人員面前
 - 程式碼產生計畫（Code Generation Part 1）只在**嚴格**模式停下；其他模式由開發者產出計畫後直接實作
-- **預設「依風險」**：PM 在 Workflow Planning 依風險分級（protocol.md 第 5.3 節）決定——低 → 自動、中 → 標準、高 → 強化；人員可隨時指定，例如「用嚴格模式」「這次用自動模式」
+- **預設「依風險」**：PM 在 Workflow Planning 依風險分級（本檔第 5.3 節）決定——低 → 自動、中 → 標準、高 → 強化；人員可隨時指定，例如「用嚴格模式」「這次用自動模式」
 
 - **任何模式都會停下來**：回饋迴圈第 3 輪仍未通過、角色回報 `blocked`、問題沒有建議答案或答案互相矛盾、需要只有人員知道的資訊、人員要求停下
 - 自動進入下一階段**不等於人員核准**：`audit.md` 與 `team-log.md` 記為「自動通過（○○模式）」，不可寫成人員核准
@@ -126,11 +128,13 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 
 ## 5.3 風險分級（PM 在 Workflow Planning 判定）
 
-| 風險 | 後端 API | AWS 基礎設施（CDK／IaC） | 其他 |
-| --- | --- | --- | --- |
-| **低** | 補測試、改 log 或錯誤訊息、不改介面的內部重構、補輸入驗證 | 加 tag、調整 log 保留天數、新增 CloudWatch alarm、補 CDK 測試 | 文件 |
-| **中** | 新增 endpoint、向後相容地加欄位或參數 | 新增**無狀態**資源（Lambda、ECS service、SQS 等） | 一般功能 |
-| **高** | **破壞性介面變更**（移除或改名欄位、改狀態碼或語意）、**DB migration／schema 變更**、認證與授權、金流、大量資料批次處理、刪除資料 | **IAM／權限**、安全群組與網路、**有狀態資源**（RDS、DynamoDB、S3、EFS 等）、**會被取代或刪除的資源**、跨 stack export、明顯增加成本 | 專案 `AGENTS.md` 列為高風險的路徑或模組 |
+依變更涉及的技術模組（第 5.5 節）判定；跨多個模組時取**最高**的等級。
+
+| 風險 | 後端 API | 前端（Vue 2／3） | AWS 基礎設施（CDK／IaC） | 其他 |
+| --- | --- | --- | --- | --- |
+| **低** | 補測試、改 log 或錯誤訊息、不改介面的內部重構、補輸入驗證 | 文案、樣式、不影響邏輯的元件重構、補元件測試 | 加 tag、調整 log 保留天數、新增 CloudWatch alarm、補 CDK 測試 | 文件 |
+| **中** | 新增 endpoint、向後相容地加欄位或參數 | 新增頁面或元件、新增 API 串接、表單 | 新增**無狀態**資源（Lambda、ECS service、SQS 等） | 一般功能 |
+| **高** | **破壞性介面變更**（移除或改名欄位、改狀態碼或語意）、**DB migration／schema 變更**、認證與授權、金流、大量資料批次處理、刪除資料 | **登入、token 與權限流程**、路由守衛、付款流程、全域狀態（store）結構改動、移除頁面、Vue 2 → 3 遷移或更換建置工具 | **IAM／權限**、安全群組與網路、**有狀態資源**（RDS、DynamoDB、S3、EFS 等）、**會被取代或刪除的資源**、跨 stack export、明顯增加成本 | 專案 `AGENTS.md` 列為高風險的路徑或模組 |
 
 **自動升級為高風險**（任何角色發現就回報 PM，PM 改用強化模式並告知人員）：
 
@@ -144,20 +148,36 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 
 ## 5.4 品質門檻（由 QA 執行，全部通過才進入最終交付）
 
-門檻**依專案自動偵測**，有設定才執行，沒有就標 `N/A（專案未設定）`；不得為了通過而改設定或跳過：
+門檻**依專案自動偵測**，有設定才執行，沒有就標 `N/A（專案未設定）`；不得為了通過而改設定或跳過。QA **先在專案根目錄執行 `bash .claude/skills/quality-gates/scripts/run-quality-gates.sh .`**（或 `~/.claude/skills/...`）（自動涵蓋 test、lint、typecheck、build、vue-tsc／tsc、npm audit、cdk synth、gitleaks），再補腳本沒涵蓋的項目（介面契約、逐條驗收標準、整合測試涵蓋範圍）：
 
 | 門檻 | 偵測方式與指令（範例） |
 | --- | --- |
 | 單元與整合測試 | `package.json` 的 `test` script（或 `pytest`、`go test` 等專案慣用指令）；後端 API 要有實際打路由的整合測試（例如 Fastify `app.inject()`）涵蓋成功、驗證失敗、未授權、找不到 |
 | 介面契約 | 實際回應符合 response schema（沒有多出或缺少欄位）；有 OpenAPI 或路由 schema 時逐一比對 |
-| 靜態分析 | `lint` script 或 `eslint` 設定；有 `tsconfig.json` 時 `tsc --noEmit`（或 `typecheck` script） |
+| 靜態分析 | `lint` script 或 `eslint` 設定；有 `tsconfig.json` 時 `tsc --noEmit`（或 `typecheck` script）；Vue 3 + TypeScript 用 `vue-tsc --noEmit` |
+| 前端（啟用前端模組時） | `build` script 必須成功；有設定時跑元件測試（Vitest／Jest + `@vue/test-utils`）與 e2e（Playwright／Cypress，可於無頭模式執行時）；檢查 FE-01（`v-html`）、FE-02（前端變數無機密） |
 | 相依套件弱點 | 有 `package-lock.json` 時 `npm audit --audit-level=high`（其他套件管理工具用對應指令） |
 | 機密掃描 | 有安裝 `gitleaks` 時 `gitleaks detect --no-git -s .`；沒安裝時以 Grep 檢查常見金鑰格式並註明 |
-| 基礎設施（有 `cdk.json` 時） | 在 `cdk.json` 所在目錄執行 `npx cdk synth`（需要 AWS 查詢而失敗時標註原因，不設定憑證）；CDK assertions／snapshot 測試；專案有 `cdk-nag` 時其結果不可有 error |
+| 基礎設施（有 `cdk.json` 時） | 在 `cdk.json` 所在目錄執行 `npx cdk synth`（因需要 AWS 查詢或憑證而失敗時，標 N/A（環境限制）並註明原因，不算 `tests-failed`，不設定憑證）；CDK assertions／snapshot 測試；專案有 `cdk-nag` 時其結果不可有 error |
 | 審查 | 審查者沒有未解決的 blocking |
 
 - 任一門檻失敗 → `tests-failed`，自動退回開發者，**不送到人員面前**
 - `cdk diff` 需要 AWS 憑證，本機不執行；交付摘要提醒由 CI（OIDC 唯讀角色）在 PR 上執行並由人員檢視（PTEAM-05）
+
+## 5.5 技術模組與規範 Skill（同 v1 Skill 本地規則）
+
+專案可能是前端、後端、AWS CDK 的任意組合（含 monorepo）。PM 在 Workspace Detection 於專案根目錄**執行 `bash .claude/skills/quality-gates/scripts/detect-modules.sh .`**（Skill 裝在使用者層級時改用 `bash ~/.claude/skills/quality-gates/scripts/detect-modules.sh .`；`settings.json` 已允許這兩種寫法免確認）偵測並啟用對應模組，各角色只套用已啟用模組的規範 Skill：
+
+| 模組 | 偵測依據（任一成立即啟用） | 規範 Skill |
+| --- | --- | --- |
+| 後端 API | `package.json` 依賴 `fastify`、`express`、`@nestjs/core`、`koa`、`hono`；或 Python `fastapi`、`django`、`flask` | `backend-api-standards`（BE-01～08） |
+| 前端 | 依賴 `vue`、`react`、`next`、`nuxt`、`svelte`、`@angular/core`；Vue 依 `vue` 版本判定 2 或 3 | `frontend-standards`（FE-01～08） |
+| AWS CDK | 有 `cdk.json`，或依賴 `aws-cdk-lib` | `aws-cdk-standards`（CDK-01～08） |
+
+- 專案 `AGENTS.md` 的聲明優先於腳本偵測；使用者可要求增減模組
+- 結果記錄在 `aidlc-state.md` 的 `## Tech Modules`
+- 每個角色依變更涉及的模組讀取 `<skills>/<規範 Skill>/SKILL.md`；審查者依規則 ID（BE／FE／CDK）判定，違反即為 blocking
+- **跨模組的需求**：API 契約是前後端的共同介面，在 ⓐ 規格與介面確認時一起定案；前端依契約串接，審查者檢查前後端是否一致
 
 ## 6. 回報格式（每個角色結束時最後輸出，PM 依此決定下一步）
 
@@ -225,7 +245,8 @@ v1 Skill 的規則目錄（依序找到第一個存在的）：
 
 - 一個單元只處理一件事：**一個 endpoint、一個 migration，或一個 stack 中一組相關資源**
 - 目標每個單元變更約 300 行以內；超過時說明理由或再切分
-- 順序：**基礎設施與 migration 先、使用它的 API 後**，方便分開回滾；同一單元不要同時改有狀態資源與大量 API 程式碼
+- 順序：**CDK 資源 → DB migration → 後端 API → 前端**，方便分開回滾；同一單元不要同時改有狀態資源與大量 API 程式碼，也不要同時改後端與前端
+- monorepo 依子目錄切分單元，每個單元只動一個子專案
 - 每個單元獨立走完 開發者 → 審查者 → QA；最終交付逐單元列出摘要
 
 需求明確、只動 1–2 個檔案、沒有架構或資料變更時（例如 hello.js），PM 可以：

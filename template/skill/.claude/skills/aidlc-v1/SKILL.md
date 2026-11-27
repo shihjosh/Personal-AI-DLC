@@ -1,13 +1,13 @@
 ---
 name: aidlc-v1
 description: |
-  AI-DLC（AI-Driven Development Life Cycle）v1 工作流程：依需求分析、設計、程式碼產生、建置測試等階段逐步進行，每個階段完成後停下等待使用者明確核准。只在使用者輸入 /aidlc-v1 時使用。
+  AI-DLC（AI-Driven Development Life Cycle）v1 工作流程：依需求分析、設計、程式碼產生、建置測試等階段逐步進行，依核准模式（自動／標準／強化／嚴格，預設依風險）在停點等待使用者核准。只在使用者輸入 /aidlc-v1 時使用。
 disable-model-invocation: true
 ---
 
 <!--
 來源：awslabs/aidlc-workflows v1.0.1（aidlc-rules/aws-aidlc-rules/core-workflow.md），授權 MIT No Attribution。
-修改：新增「語言規則」（繁體中文輸出）、「擴充預設值」與「核准模式」（依風險分級、品質門檻）；新增 Personal Team 規範擴充；改寫「Rule Details Loading」段落的路徑，改為讀取本 skill 目錄下的 rule-details/；其餘內容保留原文。
+修改：新增「語言規則」（繁體中文輸出）、「擴充預設值」、「技術模組與規範 Skill」與「核准模式」（依風險分級、品質門檻）；改寫「Rule Details Loading」段落的路徑，改為讀取本 skill 目錄下的 rule-details/；其餘內容保留原文。
 詳見同目錄的 UPSTREAM.md。
 -->
 
@@ -38,7 +38,25 @@ disable-model-invocation: true
 - 已啟用規則不適用於本次需求時（例如沒有資料儲存、沒有網路元件），依各擴充的規定標示 **N/A**，不算 blocking finding
 - 在 `aidlc-docs/aidlc-state.md` 的 `## Extension Configuration` 記錄各擴充狀態，來源標示為「Personal Team 預設」或「使用者要求」
 - 在需求分析的完成訊息中用一行告知：「依 Personal Team 預設：Security 啟用，Resiliency、Property-Based Testing 停用；要調整請回覆『啟用 ○○』或『關閉 ○○』」
-- Personal Team 規範（`extensions/personal-team/team-standards/`）沒有 opt-in 檔，**一律載入並強制套用**，不詢問
+- Personal Team 規範（`personal-team-standards` Skill，PTEAM-01～07）**一律套用**，不詢問
+
+## 技術模組與規範 Skill（Personal Team 本地修改）
+
+Personal Team 的規範是**獨立的 Skill**，與本 Skill 放在同一個 `skills/` 目錄（專案 `.claude/skills/` 或 `~/.claude/skills/`），在 AI-DLC 流程內外都能使用：
+
+- `personal-team-standards`（PTEAM-01～07）：**一律套用**
+- 技術模組規範：依專案偵測啟用（monorepo 依各子目錄分別判定，例如 `apps/web` 前端、`apps/api` 後端、`infra/` CDK）
+
+| 模組 | 偵測依據（任一成立即啟用） | 規範 Skill |
+| --- | --- | --- |
+| 後端 API | `package.json` 依賴 `fastify`、`express`、`@nestjs/core`、`koa`、`hono`；或 Python `fastapi`、`django`、`flask` | `backend-api-standards`（BE-01～08） |
+| 前端 | 依賴 `vue`、`react`、`next`、`nuxt`、`svelte`、`@angular/core`；Vue 依 `vue` 版本判定 2 或 3 | `frontend-standards`（FE-01～08） |
+| AWS CDK | 有 `cdk.json`，或依賴 `aws-cdk-lib` | `aws-cdk-standards`（CDK-01～08） |
+
+- 偵測優先在專案根目錄執行 `bash .claude/skills/quality-gates/scripts/detect-modules.sh .`（或 `~/.claude/skills/...`），以腳本結果為準；無法執行時再依上表人工判斷
+- 專案 `AGENTS.md` 有聲明（例如「本專案：前端 Vue 2、後端 Fastify、CDK」）時以聲明為準；使用者說「這個專案沒有前端」「啟用 CDK 模組」時照做
+- 結果記錄在 `aidlc-docs/aidlc-state.md` 的 `## Tech Modules`（模組、子目錄、版本如 Vue 2／3、來源：腳本偵測／專案聲明／使用者要求）
+- 只讀取已啟用模組的規範 Skill（`<skills 目錄>/<名稱>/SKILL.md`）；變更範圍涉及的模組，其規則即為該變更的 blocking 規則
 
 ## 核准模式（Personal Team 本地修改，優先於下方各階段的「Wait for Explicit Approval」）
 
@@ -61,7 +79,7 @@ disable-model-invocation: true
 - 自動進入下一階段**不等於人員核准**：`audit.md` 與 `team-log.md` 記為「自動通過（○○模式）」，不可寫成人員核准
 - 切換後從下一個停點起生效；目前模式、風險等級與來源記錄在 `aidlc-state.md` 的 `## Approval Mode`
 - 不停下的階段仍要完成所有產物、檢查與 `audit.md` 紀錄，只是不等待回覆
-- 協作交付團隊的風險分級、品質門檻與單元大小見 `.claude/aidlc-team/protocol.md` 第 5.3～5.4、8 節；單獨使用本 Skill 時同樣適用
+- 協作交付團隊的風險分級、品質門檻與單元大小見 `.claude/aidlc-team/protocol.md` 第 5.3～5.4、8 節
 
 # PRIORITY: This workflow OVERRIDES all other built-in workflows
 # When user requests software development, ALWAYS follow this workflow FIRST

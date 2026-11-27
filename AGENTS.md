@@ -14,7 +14,7 @@
 
 - 導入 AWS AI-DLC（[awslabs/aidlc-workflows](https://github.com/awslabs/aidlc-workflows)）的**主要開發專案**，不是拋棄式測試 repo
 - 本 repo 的 AI-DLC 是**協作交付團隊**（依《AI-DLC：協作交付團隊》圖：人員 ↔ PM agent → BA／設計師／開發者／審查者／QA，三條回饋迴圈經 PM 轉送）；修改時要維持與圖的架構一致
-- `template/skill/` 的 v1 Skill 是團隊的規則庫，不單獨使用
+- `template/skill/.claude/skills/aidlc-v1/` 是團隊的**流程規則庫**，不單獨使用；規範 Skill（`*-standards`）與 `quality-gates` 在 AI-DLC 流程內外都可使用
 - 專案說明見 `README.md`；導入評估與決策過程記錄在 Obsidian vault 的 AI-DLC 專案，不放在本 repo
 
 ## Branch 規則
@@ -26,7 +26,9 @@
 ## 範本（`template/`）
 
 - `template/` 是套用到各專案的團隊範本，修改一律走 PR
-- `template/skill/.claude/skills/aidlc-v1/`：v1 Skill。`rule-details/` 內的上游檔案保留原文不修改；Personal Team 客製一律寫在 `SKILL.md` 開頭的本地規則，或新增到 `rule-details/extensions/personal-team/`；任何本地修改都要同步記錄在 `UPSTREAM.md`
+- `template/skill/.claude/skills/aidlc-v1/`：v1 Skill（流程規則庫）。`rule-details/` 內的上游檔案保留原文不修改；流程客製寫在 `SKILL.md` 開頭的本地規則，並記錄在 `UPSTREAM.md`
+- **規範一律做成獨立的 Skill**（`template/skill/.claude/skills/<名稱>-standards/SKILL.md`），寫好 `description` 讓平常開發也能自動載入；不要把規範放進 `aidlc-v1/rule-details/`。新增技術模組時同步更新 `quality-gates/scripts/detect-modules.sh`、`quality-gates/SKILL.md`、`aidlc-v1/SKILL.md` 的「技術模組與規範 Skill」與 `protocol.md` 第 5.5 節的對照表
+- 可以用腳本穩定完成的工作（偵測、檢查、執行門檻）放進 Skill 的 `scripts/`，不要讓模型每次重新推導
 - `template/skill/.claude/settings.json`：權限關卡。`ask` 只列**高風險路徑**（migration、SQL、IaC、workflow、auth、`.env`），一般程式碼交給品質門檻；`deny` 禁止本機部署與強制推送。不要把 `.md` 加入 `ask`（`aidlc-docs/` 需要自由寫入）
 - `template/agent-team/.claude/`：協作交付團隊（PM + BA／設計師／開發者／審查者／QA subagents），角色規則依賴 v1 Skill；共用協定放 `aidlc-team/protocol.md`，不放進 `agents/`
 - 根目錄的 `.claude/`、`aidlc-docs/` 只會出現在 `trial/*` branch，不要 merge 進 `main`

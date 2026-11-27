@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # 把 AI-DLC 協作交付團隊套用到目標專案；已存在的檔案一律跳過，不覆蓋。
 #   apply-template.sh <目標專案目錄>
-# 會建立：.claude/agents/（PM + 5 角色）、.claude/aidlc-team/protocol.md、
-#         .claude/skills/aidlc-v1/（團隊的規則庫）、.claude/settings.json（權限關卡）
+# 會建立：.claude/agents/（PM + 5 角色）、.claude/aidlc-team/（protocol.md、prompts.md、VERSION）、
+#         .claude/skills/aidlc-v1/（流程規則庫）、4 個規範 Skill（*-standards）、
+#         .claude/skills/quality-gates/（偵測與門檻腳本）、.claude/settings.json（權限關卡）
 set -euo pipefail
 
 [ $# -eq 1 ] || { echo "用法: apply-template.sh <目標專案目錄>" >&2; exit 2; }

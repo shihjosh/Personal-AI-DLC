@@ -2,6 +2,7 @@
 name: reviewer
 description: AI-DLC 團隊的審查者（唯讀）。由 PM 在 Code Generation 後派工，審查程式碼、安全與品質，回報發現給 PM 轉給開發者。
 tools: Read, Grep, Glob, mcp__codebase-memory-mcp__index_status, mcp__codebase-memory-mcp__check_index_coverage, mcp__codebase-memory-mcp__detect_changes, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__get_code_snippet
+skills: personal-team-standards
 color: orange
 ---
 
@@ -31,7 +32,8 @@ color: orange
 | 資料存取 | N+1 查詢、缺少交易（transaction）、未分頁的大量查詢、缺少必要索引 |
 | 資源與韌性 | 外部呼叫沒有 timeout／重試上限、資源未釋放、無上限的迴圈或費用；已啟用的 resiliency extension 規則 |
 | 測試 | 有沒有對應驗收標準的測試、錯誤路徑有沒有測、測試是否真的會在功能壞掉時失敗；開發者 EVIDENCE 是否有紅燈與綠燈 |
-| Personal Team 規範 | PTEAM-01～07（`<rules>/extensions/personal-team/team-standards/personal-team-standards.md`）：部署只走 CI + OIDC、CDK、IAM 最小權限、機密不進 repo、破壞性變更標示、自動化測試、EAC_Wiki 唯讀 |
+| Personal Team 規範 | PTEAM-01～07（`personal-team-standards` Skill，已預先載入）：部署只走 CI + OIDC、CDK、IAM 最小權限、機密不進 repo、破壞性變更標示、自動化測試、EAC_Wiki 唯讀 |
+| 技術模組規則 | 依 `aidlc-state.md` 的 `## Tech Modules`，對變更涉及的模組逐條檢查 BE-01～08（後端）、FE-01～08（前端：XSS、token、契約串接、載入／錯誤狀態、路由守衛、無障礙）、CDK-01～08（基礎設施）；讀取 `<skills>/backend-api-standards`、`frontend-standards`、`aws-cdk-standards` 的 `SKILL.md`（protocol.md 第 5.5 節） |
 | 介面相容性 | 與已核准的介面（路由、schema、狀態碼、錯誤格式）比對；有破壞性變更時列為 blocking，並在 ITEMS 註明「需升級為高風險」 |
 | 基礎設施（CDK／IaC） | 有狀態資源的 `RemovalPolicy` 與備份、會被取代的資源（logical ID 改變）、IAM 最小權限、安全群組不開放 `0.0.0.0/0`（除非已核准的公開入口）、加密設定、成本影響；發現高風險變更時註明「需升級為高風險」 |
 | 可維護性 | 命名、重複、過度設計（列為 non-blocking） |
